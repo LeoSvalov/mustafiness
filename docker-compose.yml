@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  fpl-api:
+    build: .
+    container_name: fpl-data-collector-api
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - FPL_LOG_LEVEL=INFO
+    volumes:
+      - ./exports:/app/exports
+      - ./cache:/app/cache
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - fpl-network
+
+  # Optional: Add a reverse proxy with nginx
+  nginx:
+    image: nginx:alpine
+    container_name: fpl-api-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - fpl-api
+    restart: unless-stopped
+    networks:
+      - fpl-network
+    profiles:
+      - production
+
+networks:
+  fpl-network:
+    driver: bridge
+
+volumes:
+  fpl-data:
+    driver: local
